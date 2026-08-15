@@ -1,0 +1,23 @@
+name: Telegram Scheduled Sender
+
+on:
+  schedule:
+    # هر ۱۶ دقیقه اجرا میشه — هر بار که اجرا بشه، پیام فرستاده میشه
+    - cron: '*/16 * * * *'
+  workflow_dispatch: {}  # برای تست دستی از تب Actions
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: pip install telethon
+
+      - name: Send message
+        env:
+          TELEGRAM_SESSION: ${{ secrets.TELEGRAM_SESSION }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python send.py
