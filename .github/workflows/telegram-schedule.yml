@@ -1,7 +1,7 @@
 name: Telegram Scheduled Sender
 
 on:
-  workflow_dispatch: {}  # cron-job.org هر ۱۶ دقیقه این رو صدا میزنه (دقیق و سر وقت)
+  workflow_dispatch: {}  # cron-job.org هر ۵ دقیقه این رو صدا میزنه (دقیق و سر وقت)
 
 jobs:
   send:

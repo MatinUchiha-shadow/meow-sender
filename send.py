@@ -5,7 +5,8 @@
 ==============================================================================
 نحوه کار:
   - متن پیام از schedule.json خونده می‌شه
-  - آیدی گروه از Secret به نام TELEGRAM_CHAT_ID خونده می‌شه
+  - آیدی گروه‌ها از Secret به نام TELEGRAM_CHAT_ID خونده می‌شه
+    (چند گروه با ویرگول جدا می‌شن: -100111,-100222)
   - سشن اکانتت (که با دکمه «آماده‌سازی برای گیت‌هاب» داخل میو‌سندر کپی شد)
     به صورت StringSession از Secret به نام TELEGRAM_SESSION خونده می‌شه
 
@@ -33,10 +34,19 @@ async def main():
     if not chat_id_raw:
         print("خطا: Secret به نام TELEGRAM_CHAT_ID تنظیم نشده.")
         sys.exit(1)
-    try:
-        chat_id = int(chat_id_raw)
-    except ValueError:
-        print(f"خطا: TELEGRAM_CHAT_ID عدد نیست: {chat_id_raw!r}")
+
+    chat_ids = []
+    for part in chat_id_raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            chat_ids.append(int(part))
+        except ValueError:
+            print(f"خطا: TELEGRAM_CHAT_ID عدد نیست: {part!r}")
+            sys.exit(1)
+    if not chat_ids:
+        print("خطا: TELEGRAM_CHAT_ID خالیه.")
         sys.exit(1)
 
     try:
@@ -56,9 +66,10 @@ async def main():
         sys.exit(1)
 
     me = await client.get_me()
-    entity = await client.get_entity(chat_id)
-    await client.send_message(entity, text)
-    print(f"OK: «{text}» به {chat_id} فرستاده شد (اکانت: {me.first_name})")
+    for chat_id in chat_ids:
+        entity = await client.get_entity(chat_id)
+        await client.send_message(entity, text)
+        print(f"OK: «{text}» به {chat_id} فرستاده شد (اکانت: {me.first_name})")
     await client.disconnect()
 
 
