@@ -14,6 +14,7 @@
 """
 import asyncio
 import base64
+import gzip
 import json
 import os
 import sys
@@ -54,8 +55,12 @@ async def main():
     tmp = tempfile.mkdtemp(prefix="meow_gh_")
     session_path = os.path.join(tmp, "meow_session.session")
     try:
+        data = base64.b64decode(b64)
+        # سشن میو‌سندر فشرده (gzip) کپی می‌کنه تا زیر سقف ۶۴KB سکرت گیت‌هاب بمونه
+        if data[:2] == b"\x1f\x8b":
+            data = gzip.decompress(data)
         with open(session_path, "wb") as f:
-            f.write(base64.b64decode(b64))
+            f.write(data)
     except Exception as e:
         print(f"خطا: TELEGRAM_SESSION قابل رمزگشایی نیست — {e}")
         sys.exit(1)
