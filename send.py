@@ -7,29 +7,27 @@
   - متن پیام از schedule.json خونده می‌شه
   - آیدی گروه از Secret به نام TELEGRAM_CHAT_ID خونده می‌شه
   - سشن اکانتت (که با دکمه «آماده‌سازی برای گیت‌هاب» داخل میو‌سندر کپی شد)
-    از Secret به نام TELEGRAM_SESSION خونده و رمزگشایی می‌شه
+    به صورت StringSession از Secret به نام TELEGRAM_SESSION خونده می‌شه
 
 اجرای تست لوکال:
-    TELEGRAM_SESSION=<base64> TELEGRAM_CHAT_ID=-1001234567890 python send.py
+    TELEGRAM_SESSION=<string> TELEGRAM_CHAT_ID=-1001234567890 python send.py
 """
 import asyncio
-import base64
-import gzip
 import json
 import os
 import sys
-import tempfile
+
+from telethon import TelegramClient
+from telethon.sessions import StringSession
 
 API_ID = 2040
 API_HASH = "b18441a1ff607e10a989891a5462e627"
 
 
 async def main():
-    from telethon import TelegramClient
-
-    b64 = os.environ.get("TELEGRAM_SESSION", "").strip()
+    session_str = os.environ.get("TELEGRAM_SESSION", "").strip()
     chat_id_raw = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
-    if not b64:
+    if not session_str:
         print("خطا: Secret به نام TELEGRAM_SESSION تنظیم نشده.")
         sys.exit(1)
     if not chat_id_raw:
@@ -49,28 +47,12 @@ async def main():
         print(f"خطا: schedule.json خونده نشد — {e}")
         sys.exit(1)
 
-    # سشن (فایل SQLite) از base64 بازسازی می‌شه.
-    # نکته مهم: اسم فایل باید حتماً به .session ختم بشه وگرنه Telethon
-    # خودش پسوند رو اضافه می‌کنه و دنبال فایل اشتباه می‌گرده.
-    tmp = tempfile.mkdtemp(prefix="meow_gh_")
-    session_path = os.path.join(tmp, "meow_session.session")
-    try:
-        data = base64.b64decode(b64)
-        # سشن میو‌سندر فشرده (gzip) کپی می‌کنه تا زیر سقف ۶۴KB سکرت گیت‌هاب بمونه
-        if data[:2] == b"\x1f\x8b":
-            data = gzip.decompress(data)
-        with open(session_path, "wb") as f:
-            f.write(data)
-    except Exception as e:
-        print(f"خطا: TELEGRAM_SESSION قابل رمزگشایی نیست — {e}")
-        sys.exit(1)
-
-    client = TelegramClient(session_path, API_ID, API_HASH)
+    client = TelegramClient(StringSession(session_str), API_ID, API_HASH)
     await client.connect()
     if not await client.is_user_authorized():
         print("خطا: سشن معتبر نیست.")
-        print("ممکنه برنامه میو‌سندر هم‌زمان باز باشه — همون سشن از دو جا نمی‌تونه استفاده بشه.")
-        print("برنامه رو ببند، دوباره سشن رو کپی کن و Secret رو عوض کن.")
+        print("دکمه «آماده‌سازی برای گیت‌هاب» رو دوباره بزن، مقدار جدید رو کپی کن و Secret رو عوض کن.")
+        print("(اگه برنامه میو‌سندر هم‌زمان بازه، ببندش — همون سشن از دو جا نمی‌تونه استفاده بشه)")
         sys.exit(1)
 
     me = await client.get_me()
