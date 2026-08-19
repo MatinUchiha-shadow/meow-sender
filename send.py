@@ -5,13 +5,15 @@
 ==============================================================================
 نحوه کار:
   - متن پیام از schedule.json خونده می‌شه
-  - آیدی گروه‌ها از Secret به نام TELEGRAM_CHAT_ID خونده می‌شه
-    (چند گروه با ویرگول جدا می‌شن: -100111,-100222)
+  - مقصد از schedule.json و کلید target خونده می‌شه (آیدی عددی، یوزرنیم یا لینک گروه)
+    — اگه اونجا نبود، از Secret به نام TELEGRAM_CHAT_ID استفاده می‌شه
+    (Secret می‌تونه چند گروه با ویرگول باشه: -100111,-100222)
   - سشن اکانتت (که با دکمه «آماده‌سازی برای گیت‌هاب» داخل میو‌سندر کپی شد)
     به صورت StringSession از Secret به نام TELEGRAM_SESSION خونده می‌شه
 
 اجرای تست لوکال:
-    TELEGRAM_SESSION=<string> TELEGRAM_CHAT_ID=-1001234567890 python send.py
+    TELEGRAM_SESSION=<string> python send.py
+    (با کلید target توی schedule.json یا TELEGRAM_CHAT_ID=<...>)
 """
 import asyncio
 import json
@@ -31,30 +33,21 @@ async def main():
     if not session_str:
         print("خطا: Secret به نام TELEGRAM_SESSION تنظیم نشده.")
         sys.exit(1)
-    if not chat_id_raw:
-        print("خطا: Secret به نام TELEGRAM_CHAT_ID تنظیم نشده.")
-        sys.exit(1)
-
-    chat_ids = []
-    for part in chat_id_raw.split(","):
-        part = part.strip()
-        if not part:
-            continue
-        try:
-            chat_ids.append(int(part))
-        except ValueError:
-            print(f"خطا: TELEGRAM_CHAT_ID عدد نیست: {part!r}")
-            sys.exit(1)
-    if not chat_ids:
-        print("خطا: TELEGRAM_CHAT_ID خالیه.")
-        sys.exit(1)
 
     try:
         with open("schedule.json", encoding="utf-8") as f:
             sched = json.load(f)
         text = sched.get("text", "میو")
+        target = sched.get("target", "").strip()
     except Exception as e:
         print(f"خطا: schedule.json خونده نشد — {e}")
+        sys.exit(1)
+
+    # مقصد: اول از schedule.json (آیدی، یوزرنیم یا لینک گروه)، بعد Secret
+    targets = [target] if target else [p.strip() for p in chat_id_raw.split(",") if p.strip()]
+    if not targets:
+        print("خطا: مقصد مشخص نیست — توی schedule.json کلید target رو بذار\n"
+              "یا Secret به نام TELEGRAM_CHAT_ID رو تنظیم کن.")
         sys.exit(1)
 
     client = TelegramClient(StringSession(session_str), API_ID, API_HASH)
@@ -66,10 +59,14 @@ async def main():
         sys.exit(1)
 
     me = await client.get_me()
-    for chat_id in chat_ids:
+    for t in targets:
+        try:
+            chat_id = int(t)   # آیدی عددی مثل -1001234567890
+        except ValueError:
+            chat_id = t        # یوزرنیم یا لینک مثل t.me/Your_Fragment53
         entity = await client.get_entity(chat_id)
         await client.send_message(entity, text)
-        print(f"OK: «{text}» به {chat_id} فرستاده شد (اکانت: {me.first_name})")
+        print(f"OK: «{text}» به {t} فرستاده شد (اکانت: {me.first_name})")
     await client.disconnect()
 
 
